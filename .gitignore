@@ -1,1 +1,8 @@
 ﻿
+# Ignored artifacts
+ffmpeg.exe
+*.zip
+ffmpeg_dir/
+*.ps1
+test_audio_batch_2/
+*_results/
