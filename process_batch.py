@@ -2,6 +2,8 @@ import warnings
 warnings.filterwarnings('ignore')
 
 import sys
+import os
+os.environ['PATH'] += os.pathsep + r'c:\Users\shiva\Desktop\ASR'
 try:
     sys.stdout.reconfigure(encoding='utf-8')
 except Exception:
@@ -10,6 +12,7 @@ except Exception:
 import torchaudio
 if not hasattr(torchaudio, 'set_audio_backend'):
     torchaudio.set_audio_backend = lambda x: None
+    torchaudio.get_audio_backend = lambda: 'soundfile'
 
 import os
 import torch
@@ -40,7 +43,7 @@ def _hf_hub_download_wrapper(*args, **kwargs):
         raise
 huggingface_hub.hf_hub_download = _hf_hub_download_wrapper
 
-FILES = glob.glob(r"test_audio_batch\*.mp3")
+FILES = glob.glob(r"test_audio_batch_2\*.mp3")
 
 print("Initializing Pyannote...")
 try:
