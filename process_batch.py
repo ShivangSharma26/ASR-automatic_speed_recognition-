@@ -43,7 +43,7 @@ def _hf_hub_download_wrapper(*args, **kwargs):
         raise
 huggingface_hub.hf_hub_download = _hf_hub_download_wrapper
 
-FILES = glob.glob(r"test_audio_batch_2\*.mp3")
+FILES = glob.glob("test_audio_batch_2/*.mp3")
 
 print("Initializing Pyannote...")
 try:
@@ -81,7 +81,7 @@ for file_path in FILES:
     diarization = pyannote_pipe(audio_in_memory)
     
     raw_segments = []
-    for turn, _, speaker in diarization.speaker_diarization.itertracks(yield_label=True):
+    for turn, _, speaker in diarization.itertracks(yield_label=True):
         raw_segments.append((turn.start, turn.end, speaker))
         
     print("Merging Micro-Chunks...")
