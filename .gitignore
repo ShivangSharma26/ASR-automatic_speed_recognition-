@@ -1,8 +1,13 @@
-﻿
-# Ignored artifacts
-ffmpeg.exe
+# Ignore heavy data and models
 *.zip
-ffmpeg_dir/
-*.ps1
-test_audio_batch_2/
 *_results/
+test_audio_batch/
+test_audio_batch_2/
+test_audio_batch_remote/
+models_cache/
+asr_env/
+__pycache__/
+*.mp3
+*.wav
+*.TXT
+Remote_Results/
