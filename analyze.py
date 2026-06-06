@@ -1,3 +1,4 @@
+"""Aggregation script to generate qualitative separation metrics."""
 import os
 import json
 import glob
