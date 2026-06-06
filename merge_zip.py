@@ -1,3 +1,4 @@
+"""Utility to merge distributed processing results into a master archive."""
 import os
 import zipfile
 import glob
