@@ -1,3 +1,4 @@
+"""SFTP script to securely download processing results."""
 import paramiko
 import sys
 
