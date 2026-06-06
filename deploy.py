@@ -1,3 +1,4 @@
+"""Automated deployment script for Remote A100 GPU cluster."""
 import paramiko
 import sys
 import time
