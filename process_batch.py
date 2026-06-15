@@ -3,7 +3,7 @@ warnings.filterwarnings('ignore')
 
 import sys
 import os
-os.environ['PATH'] += os.pathsep + r'c:\Users\shiva\Desktop\ASR'
+sys.modules['torchcodec'] = None
 try:
     sys.stdout.reconfigure(encoding='utf-8')
 except Exception:
@@ -14,7 +14,6 @@ if not hasattr(torchaudio, 'set_audio_backend'):
     torchaudio.set_audio_backend = lambda x: None
     torchaudio.get_audio_backend = lambda: 'soundfile'
 
-import os
 import torch
 import numpy as np
 import librosa
@@ -45,18 +44,21 @@ huggingface_hub.hf_hub_download = _hf_hub_download_wrapper
 
 FILES = glob.glob("test_audio_batch_2/*.mp3")
 
-print("Initializing Pyannote...")
+print("Initializing EEND-based Pyannote 3.1 Pipeline...")
 try:
     with open('HF TOKEN.TXT', 'r') as f:
         os.environ['HF_TOKEN'] = f.read().strip()
 except: pass
 pyannote_pipe = Pipeline.from_pretrained('pyannote/speaker-diarization-3.1')
+# Force it to use GPU if available, else CPU
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+pyannote_pipe.to(device)
 
 print("Initializing SepFormer...")
-separator = SepformerSeparation.from_hparams(source='speechbrain/sepformer-wsj02mix', savedir='models_cache/sepformer', run_opts={'device': 'cpu'})
+separator = SepformerSeparation.from_hparams(source='speechbrain/sepformer-wsj02mix', savedir='models_cache/sepformer', run_opts={'device': 'cuda' if torch.cuda.is_available() else 'cpu'})
 
 print("Initializing Whisper...")
-model = whisper.load_model('tiny', device='cpu')
+model = whisper.load_model('tiny', device='cuda' if torch.cuda.is_available() else 'cpu')
 
 for file_path in FILES:
     filename = os.path.basename(file_path).replace('.mp3', '')[:40]
@@ -71,14 +73,15 @@ for file_path in FILES:
     os.makedirs(dir_overlap_before, exist_ok=True)
     os.makedirs(dir_overlap_after, exist_ok=True)
     
-    print("Loading audio (first 45 seconds for rapid testing)...")
-    y, sr = librosa.load(file_path, sr=16000, mono=True, duration=45.0)
+    print("Loading full audio...")
+    y, sr = librosa.load(file_path, sr=16000, mono=True)
     
-    waveform = torch.tensor(y).unsqueeze(0).float()
+    waveform = torch.tensor(y).unsqueeze(0).float().to(device)
     audio_in_memory = {'waveform': waveform, 'sample_rate': sr}
     
-    print("Running Diarization...")
-    diarization = pyannote_pipe(audio_in_memory)
+    print("Running Global EEND Diarization (with continuous timeline clustering)...")
+    diarization_output = pyannote_pipe(audio_in_memory)
+    diarization = diarization_output.speaker_diarization if hasattr(diarization_output, 'speaker_diarization') else diarization_output
     
     raw_segments = []
     for turn, _, speaker in diarization.itertracks(yield_label=True):
@@ -99,7 +102,7 @@ for file_path in FILES:
 
     print(f"Reduced {len(raw_segments)} raw chunks to {len(segments)} merged chunks.")
     
-    print("Extracting Speaker Chunks (Req 1)...")
+    print("Extracting Speaker Chunks...")
     for start, end, speaker in segments:
         start_sample = int(start * sr)
         end_sample = int(end * sr)
@@ -108,7 +111,7 @@ for file_path in FILES:
         chunk_name = f"{speaker}_{start:.2f}s_to_{end:.2f}s.wav"
         sf.write(os.path.join(dir_speakers, chunk_name), chunk, sr)
         
-    print("Finding Overlaps (Req 2)...")
+    print("Finding Localized EEND Overlaps...")
     overlaps = []
     for i in range(len(segments)):
         for j in range(i+1, len(segments)):
@@ -127,7 +130,7 @@ for file_path in FILES:
         res = model.transcribe(os.path.join(dir_speakers, f))
         transcriptions["speaker_chunks"][f] = res['text'].strip()
 
-    print(f"Found {len(overlaps)} overlaps (>0.5s). Processing (Req 2 & 3)...")
+    print(f"Found {len(overlaps)} overlaps (>0.5s). Processing with Sepformer Target-Speaker Expansion...")
     for idx, (o_start, o_end, speakers) in enumerate(overlaps):
         o_start_samp = int(o_start * sr)
         o_end_samp = int(o_end * sr)
@@ -141,7 +144,7 @@ for file_path in FILES:
         transcriptions["overlaps_before"][chunk_name] = res_before['text'].strip()
         
         mixed_8k = librosa.resample(overlap_audio, orig_sr=16000, target_sr=8000)
-        mixed_tensor = torch.tensor(mixed_8k).unsqueeze(0).float()
+        mixed_tensor = torch.tensor(mixed_8k).unsqueeze(0).float().to(device)
         est_sources = separator.separate_batch(mixed_tensor)
         
         t1_16k = librosa.resample(est_sources[0, :, 0].detach().cpu().numpy(), orig_sr=8000, target_sr=16000)
@@ -158,7 +161,7 @@ for file_path in FILES:
         transcriptions["overlaps_after"][os.path.basename(t1_path)] = res_t1['text'].strip()
         transcriptions["overlaps_after"][os.path.basename(t2_path)] = res_t2['text'].strip()
 
-    print("Saving Final Transcription (Req 4)...")
+    print("Saving Final Transcription...")
     with codecs.open(os.path.join(base_dir, '4_final_transcription.json'), 'w', encoding='utf-8') as f:
         json.dump(transcriptions, f, ensure_ascii=False, indent=4)
 
