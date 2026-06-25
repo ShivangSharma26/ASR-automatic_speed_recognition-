@@ -54,7 +54,7 @@ def _hf_hub_download_wrapper(*args, **kwargs):
         raise
 huggingface_hub.hf_hub_download = _hf_hub_download_wrapper
 
-FILES = glob.glob("test_audio_batch_2/sravan_office_collagues_call_recording 1.mp3")
+FILES = glob.glob("test_audio_batch_2/*.mp3")
 
 print("Initializing Custom OSD Pipeline (Replacing Diarization)...")
 try:
