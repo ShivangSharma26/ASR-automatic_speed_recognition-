@@ -1,1 +1,2 @@
 # OSD Pipeline Continuous Evaluation Metrics
+Evaluated batch segment #: Successfully processed 7 overlapping regions with WHAMR.
