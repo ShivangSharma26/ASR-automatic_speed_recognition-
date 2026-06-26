@@ -6,3 +6,4 @@ Evaluated batch segment #: Successfully processed 13 overlapping regions with WH
 Evaluated batch segment #: Successfully processed 5 overlapping regions with WHAMR.
 Evaluated batch segment #: Successfully processed 10 overlapping regions with WHAMR.
 Evaluated batch segment #: Successfully processed 2 overlapping regions with WHAMR.
+Evaluated batch segment #: Successfully processed 5 overlapping regions with WHAMR.
